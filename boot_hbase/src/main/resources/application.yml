@@ -1,0 +1,8 @@
+hbase:
+  zookeeper:
+    quorum: 192.168.146.154
+    property:
+      clientPort: 2181
+zookeeper:
+  znode:
+    parent: /hbase

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!-- 引入 ECharts 文件 -->
+    <script src="../static/js/echarts.min.js" th:src="@{/js/echarts.min.js}"></script>
+    <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js" th:src="@{https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js}"></script>
+    <style>
+        .warn {
+            color: orange;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+<div id="main" style="width: 600px;height:400px;position:absolute;top:50%;left: 30%;margin-top: -200px;margin-left: -300px;"></div>
+<div id="window" style="width: 600px;height: 400px;position:absolute;top:50%;left: 80%;margin-top: -200px;margin-left: -300px;">
+    <ul>
+
+    </ul>
+</div>
+<script type="text/javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));//main是<div id="main" style="width: 600px;height:400px;"></div>的id
+    // 指定图表的配置项和数据
+    var colors = ['#5793f3', '#d14a61', '#675bba'];
+    option = {
+        color: colors,
+
+        tooltip: {
+            trigger: 'none',
+            axisPointer: {
+                type: 'cross'
+            }
+        },
+        legend: {
+            data:['设备A 温度', '设备B 温度', '设备C 温度']
+        },
+        grid: {
+            top: 70,
+            bottom: 50
+        },
+        xAxis: [
+            {
+                data: []
+            },{
+                data: []
+            },{
+                data: []
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value'
+            }
+        ],
+        series: [
+            {
+                name: '设备A 温度',
+                type: 'line',
+                xAxisIndex: 1,
+                smooth: true,
+                data: []
+            },
+            {
+                name: '设备B 温度',
+                type: 'line',
+                xAxisIndex: 2,
+                smooth: true,
+                data: []
+            },
+            {
+                name: '设备C 温度',
+                type: 'line',
+                smooth: true,
+                data: []
+            }
+        ]
+    };
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+</script>
+<script type="text/javascript">
+    var webSocket = new WebSocket("ws://localhost:11111?account=123&auth=3333");
+    webSocket.open = function (data) {
+        console.log("open=>>", data)
+    };
+    webSocket.onmessage = function (event) {
+        console.log("message==>",event.data);
+        var obj = JSON.parse(event.data);
+        var type = obj.type,
+            text = JSON.parse(obj.text),
+            rackID = text.rackID;
+        var rack;
+        if (rackID == '1') {
+            rack = 'A';
+        } else if (rackID == '2') {
+            rack = 'B';
+        } else if (rackID == '3') {
+            rack = 'C';
+        }
+        if (type == 'input') {
+            var data;
+            if (rackID == '1') {
+                data = option.series[0].data;
+            } else if (rackID == '2') {
+                data = option.series[1].data;
+            } else if (rackID == '3') {
+                data = option.series[2].data;
+            }
+            if (data.length >= 36) {
+                data.shift();
+            }
+            data.push(text.temperature);
+            myChart.setOption({
+                series: [{
+                    // 根据名字对应到相应的系列
+                    name: "设备"+ rack +" 温度",
+                    data: data
+                }]
+            });
+        } else {
+            var ulLength = $("#window ul li").length;
+            if (ulLength >= 18) {
+                $("#window ul li:first").remove();
+            }
+            if (type == 'warnings') {
+                $("#window ul").append("<li><span class='warn'>警告："+ rack +"机器异常, 温度："+ text.averageTemperature +" </span></li>");
+            } else if (type == 'alerts') {
+                $("#window ul").append("<li><span class='error'>报警："+ rack +"机器报警</span></li>");
+            }
+        }
+    };
+    webSocket.onclose = function (ev) {
+        console.log("close=>>", ev)
+    };
+    webSocket.onerror = function (ev) {
+        console.log("error=>>", ev)
+    };
+</script>
+</body>
+
+</html>
